@@ -57,3 +57,8 @@ python app.py
 - SQLite: 数据库
 - Bootstrap: 前端UI框架
 - Werkzeug: 密码哈希处理 
+
+## 更新：
+
+- `datetime.datetime.utcnow()` 将被下一个python版本中移除，换成timezone-aware object： `datetime.datetime.now(datetime.UTC)`
+- `Query.get()` 是SQLAlchemy的LegacyAPI，换成`Session.get()`

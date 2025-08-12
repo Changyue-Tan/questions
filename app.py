@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, UTC
 import os
 
 app = Flask(__name__)
@@ -17,7 +17,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
     last_login = db.Column(db.DateTime)
     
     def __repr__(self):
@@ -27,7 +27,7 @@ class User(db.Model):
 class LoginLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    login_time = db.Column(db.DateTime, default=datetime.utcnow)
+    login_time = db.Column(db.DateTime, default=lambda: datetime.now(UTC))
     logout_time = db.Column(db.DateTime)
     ip_address = db.Column(db.String(45))
     
@@ -36,7 +36,7 @@ class LoginLog(db.Model):
 @app.route('/')
 def index():
     if 'user_id' in session:
-        user = User.query.get(session['user_id'])
+        user = db.session.get(User, session['user_id'])
         return render_template('dashboard.html', user=user)
     return redirect(url_for('login'))
 
@@ -83,7 +83,7 @@ def login():
             session['username'] = user.username
             
             # 更新最后登录时间
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now(UTC)
             
             # 记录登录日志
             login_log = LoginLog(
@@ -106,9 +106,9 @@ def login():
 def logout():
     if 'user_id' in session and 'login_log_id' in session:
         # 更新登出时间
-        login_log = LoginLog.query.get(session['login_log_id'])
+        login_log = db.session.get(LoginLog, session['login_log_id'])
         if login_log:
-            login_log.logout_time = datetime.utcnow()
+            login_log.logout_time = datetime.now(UTC)
             db.session.commit()
     
     session.clear()
@@ -120,7 +120,7 @@ def profile():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    user = User.query.get(session['user_id'])
+    user = db.session.get(User, session['user_id'])
     login_logs = LoginLog.query.filter_by(user_id=user.id).order_by(LoginLog.login_time.desc()).limit(10).all()
     
     return render_template('profile.html', user=user, login_logs=login_logs)
